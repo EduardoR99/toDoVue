@@ -1,41 +1,39 @@
-<script >
-import AddTaskInput from './components/AddTaskInput.vue';
-import BaseCheckbox from './components/BaseCheckbox.vue';
-import TodoListItem from './components/TodoListItem.vue';
+<script>
+import AddTaskInput from './components/task/AddTaskInput.vue';
+import BaseCheckbox from './components/base/BaseCheckbox.vue';
+import TodoListItem from './components/task/TodoListItem.vue';
+import SummaryLine from './components/PojectSummaryLine.vue';
+import ProjectList from './components/project/ProjectList.vue';
+import {
+  ADD_TASK,
+  UPDATE_TASK,
+  SET_ONLY_PENDING,
+} from "./store/mutation-types";
+import { mapGetters, mapState, mapMutations } from "vuex";
 
 export default {
   name: "App",
-  components: { BaseCheckbox, AddTaskInput, TodoListItem },
+  components: { BaseCheckbox, AddTaskInput, TodoListItem, SummaryLine, ProjectList },
   data() {
     return {
-      onlyPending: false,
-      tasks: [{
-        id: 1,
-        description: 'Buy food for the dog',
-        priority: false,
-        done: false
-      },
-      {
-        id: 2,
-        description: 'Pay the bills',
-        priority: true,
-        done: false
-      },
-      {
-        id: 3,
-        description: 'Buy some computer games',
-        priority: false,
-        done: false
-      },
-      {
-        id: 4,
-        description: 'Go to the gym',
-        priority: false,
-        done: false
-      }]
+      nextTaskId: 1, // Declare e inicialize a variável nextTaskId
     }
   },
+  // computed: mapState([]),
   computed: {
+    ... mapState(["activeProjectId"]),
+    ...mapGetters({
+      projects: 'projectsWithStats',
+      activeProject: 'activeProject',
+      tasks: 'activeProjectTasks',
+    }),
+    /*projects() {
+      return this.$store.getters.projectsWithStats;
+    },
+    tasks() {
+      // return this.$store.state.tasks
+      return this.activeProject?.tasks ?? [];
+    },*/
     displayedTasks() {
       return [...this.tasks].sort(
         (a, b) => Number(b.priority) - Number(a.priority)
@@ -43,34 +41,70 @@ export default {
         .filter(
           task => !this.onlyPending || !task.done
         );
+    },
+    onlyPending: {
+      get() {
+        return this.$store.state.onlyPending
+      },
+      set(newValue) {
+        this[SET_ONLY_PENDING](newValue)
+      }
+    },
+    activeProjectId() {
+      return this.$store.state.activeProjectId
     }
   },
   methods: {
+    ...mapMutations([
+      ADD_TASK,
+      UPDATE_TASK,
+      SET_ONLY_PENDING,
+    ]),
     taskAdded(task) {
-      this.tasks.push({
-        id: nextTaskId++,
-        description: task,
-        done: false,
-        priority: false
+      this[ADD_TASK]({
+        projectId: this.activeProjectId,
+        task: {
+          id: this.nextTaskId++,
+          description: task,
+          done: false,
+          priority: false
+        }
+      }
+      );
+    },
+    taskUpdated(task, changes) {
+      this[UPDATE_TASK]({
+        projectId: this.activeProjectId,
+        task: Object.assign(task, changes)
       });
+
     }
   },
-
 }
 </script>
 
+
 <template>
   <main>
-      <div class="mb-4">
-        <AddTaskInput @added="taskAdded"/>
-        <BaseCheckbox
-         class="mb-4 p-4 text-gray-600 text-sm font-weight-100" v-model="onlyPending">Only Pending
-          Tasks</BaseCheckbox>
+    <div class="flex flex-col md:flex-row">
+      <div class="w-full md:w-1/3 xl:w-1/5 mr-4 px-0 md:px-4 mb-4 h-full text-lg md:text-sm">
+        <ProjectList :projects="projects" />
       </div>
-      <div class="grid grid-cols-1 gap-4 md:grid-cols-3">
-        <TodoListItem v-for="task in displayedTasks" :task="task" :key="task.id" v-model:done="task.done"
-          v-model:priority="task.priority"/>
+      <div class="w-full md:w-2/3 xl:w-4/5">
+        <div class="mb-4">
+          <AddTaskInput @added="taskAdded" />
+          <BaseCheckbox class="mb-4 p-4 text-gray-600  font-weight-100" v-model="onlyPending">Only Pending
+            Tasks</BaseCheckbox>
+        </div>
+        <div class="grid grid-cols-1 gap-4 lg:grid-cols-3">
+          <TodoListItem v-for="task in displayedTasks" :task="task" :project-id="activeProjectId" :key="task.id" :done="task.done"
+            :priority="task.priority" @update:done="taskUpdated(task, { done: $event })"
+            @update:priority="taskUpdated(task, { priority: $event })" />
+        </div>
+        <SummaryLine class="mt-8" />
       </div>
+    </div>
+
   </main>
 </template>
 

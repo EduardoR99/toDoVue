@@ -1,6 +1,6 @@
 <template>
     <main>
-        <div class="bg-white shadow-sm rounded-md text-gray-700 text-xs md:text-sm p-4"
+        <div class="bg-white shadow-sm rounded-md text-gray-700 p-4"
             :class="{ 'opacity-25 line-through': task.done }">
             <div>{{ task.description }}</div>
             <div class="py-4 bg-white">
@@ -13,7 +13,7 @@
     </main>
 </template>
 <script>
-import BaseCheckBox from './BaseCheckbox.vue'
+import BaseCheckBox from '../base/BaseCheckbox.vue'
 export default {
     name: 'TodoListItem',
     components:{
@@ -24,9 +24,15 @@ export default {
             type: Object,
             required: true,
         },
+        projectId: Number,
         done: Boolean,
-        priority: Boolean
-      
+        priority: Boolean,
+    },
+    provide() {
+        return{
+            task: this.task,
+            projectId: this.projectId
+        }
     },
     emits: ['update:done', 'update:priority']
 }
